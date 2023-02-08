@@ -7,18 +7,24 @@ import asdf from "./images2/dog.jpeg";
 import Image from "next/image";
 // import images from "../../public/images/adidas/Adifom SLTN Shoes"
 
-import { api } from "../utils/api";
+import { api } from "../../utils/api";
 
 //for dealing with images
 import path from "path";
 import { promises as fs } from "fs";
-import { caller } from "../server/api/routers/example";
+import { caller } from "../../server/api/routers/example";
 import { object } from "zod";
 import { useState } from "react";
+import test from "node:test";
 
-const Home: NextPage = ({ newObj, test }) => {
+const Home: NextPage = ({ newObj, test, filters }) => {
   // local state
-
+  console.log("filters check");
+  console.log(filters);
+  let myNewFilters = null;
+  if (filters) {
+    myNewFilters = Object.entries(filters);
+  }
   //
   console.log("props");
   console.log("type of obj");
@@ -31,13 +37,21 @@ const Home: NextPage = ({ newObj, test }) => {
   console.log("test test");
   console.log(test);
 
-  const getItems = api.example.getItems.useQuery({
-    color: "",
-    brand: "",
-    size: "",
-  });
+  let size = null;
+  let sentObj = { color: "red", brand: "nike", size };
+  let newSentObj = { ...sentObj };
+  console.log("newSentObj");
+  console.log(newSentObj);
+  const getItems = api.example.getItems.useQuery("nike");
   console.log("getItems.data");
   console.log(getItems.data);
+
+  ////test bs
+  let randObj = { hello: "hi", goodbye: "bye", tschuss: "tschuss" };
+  let { hello, ...rest } = randObj;
+  console.log("rest test");
+  console.log(rest);
+  //end test bs
 
   return (
     <>
@@ -88,12 +102,38 @@ const Home: NextPage = ({ newObj, test }) => {
                   : ""}
               </div>
 
-              <label>
+              {/* <label>
                 <input type="checkbox" />
                 Red
                 <input type="checkbox" />
                 Blue
-              </label>
+              </label> */}
+              {myNewFilters
+                ? myNewFilters.map((item) => {
+                    console.log("filter item");
+                    console.log(item);
+                    return (
+                      <div>
+                        <label>
+                          <h1>{item[0]}</h1>
+
+                          {item[1]
+                            ? item[1].map((item2) => {
+                                return (
+                                  <div>
+                                    <input type="checkbox" />
+                                    {item2}
+                                  </div>
+                                );
+                              })
+                            : ""}
+                        </label>
+                        <br />
+                        <br />
+                      </div>
+                    );
+                  })
+                : ""}
             </div>
             <div className="flex flex-col items-center gap-2">
               <div>
@@ -225,15 +265,25 @@ const IndiviualShoe = (data) => {
 interface LooseObject {
   [key: string]: any;
 }
-export async function getServerSideProps() {
-  let test = await caller.getItems({});
-  console.log("text");
+export async function getServerSideProps(context) {
+  let { color } = context.query;
+  let { shees } = context.query;
+  console.log("meine seheesh");
+  console.log(shees);
+  console.log(" meine color");
+  console.log(color);
+  console.log("meine context");
+  console.log(context.query);
+  let test = await caller.getItems({ brand: "adidas" });
+  console.log("she text");
   console.log(typeof test);
+  console.log(test);
   console.log("text2");
   console.log(test[0]);
   console.log(test);
 
   let newObj: LooseObject = {};
+  let filters = {};
 
   const promises = test.map(async (shoe) => {
     console.log(`shoesie ${JSON.stringify(shoe.main)}`);
@@ -245,6 +295,38 @@ export async function getServerSideProps() {
 
     console.log("pre check");
     console.log(readNewAdd);
+
+    //
+
+    ////////////////Begin Creating properties for filter function://////////////////////////
+    let { main, extras, id, ...other } = shoe;
+    console.log("other test");
+    console.log(other);
+    //get the keys from the object
+    let otherKeys = Object.keys(other);
+    let otherValues = Object.values(other);
+
+    //
+    for (let i = 0; i < otherKeys.length; i++) {
+      let filtersPropertyArray = filters[otherKeys[i]];
+
+      //check if key exists in obj if not create it
+      if (!(otherKeys[i] in filters)) {
+        filters[otherKeys[i]] = [otherValues[i]];
+        //if key does exists, check if the array of the key already contains filtered vlaue
+      } else if (filtersPropertyArray?.includes(otherValues[i])) {
+        // do nothing
+        //if key exists but value does not, push it
+      } else {
+        filters[otherKeys[i]].push(otherValues[i]);
+      }
+    }
+    //
+    console.log("check fiters after");
+    console.log(filters);
+    ////////////////End Creating properties for filter function://////////////////////////
+
+    //
 
     for (let i = 0; i < readNewAdd.length; i++) {
       if (!(shoe.main in newObj)) {
@@ -268,5 +350,12 @@ export async function getServerSideProps() {
   console.log("images special");
   console.log(newObj);
 
-  return { props: { newObj, test, sheesh: "sheesh" } };
+  return { props: { newObj, test, sheesh: "sheesh", filters } };
 }
+
+// ////test bs
+// let randObj = { hello: "hi", goodbye: "bye", tschuss: "tschuss" };
+// let { hello, ...rest } = randObj;
+// console.log("rest test");
+// console.log(rest);
+// //end test bs

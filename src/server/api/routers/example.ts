@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { createTRPCRouter, publicProcedure, protectedProcedure } from "../trpc";
 import { prisma } from "../../db";
+import { Input } from "postcss";
 
 export const exampleRouter = createTRPCRouter({
   hello: publicProcedure
@@ -20,11 +21,23 @@ export const exampleRouter = createTRPCRouter({
     return "you can now see this secret message!";
   }),
 
-  getItems: publicProcedure.query(async ({ ctx }) => {
-    let items = await ctx.prisma.image.findMany();
+  getItems: publicProcedure
+    .input(
+      z.object({
+        color: z.string().default(""),
+        brand: z.string().default(""),
+        size: z.string().default(""),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      let items = await ctx.prisma.image.findMany({
+        where: {
+          AND: [input.brand ? { brand: input.brand } : {}],
+        },
+      });
 
-    return items;
-  }),
+      return items;
+    }),
 });
 
 export const caller = exampleRouter.createCaller({
